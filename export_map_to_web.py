@@ -133,7 +133,7 @@ for label, col in HM_COLS.items():
     # --- Constraint Logic ---
     # Prevent overshoot into negative values (common with cubic splines)
     z_interp = np.clip(z_interp, a_min=0.0, a_max=None)
-    
+
     interp_grids[label] = z_interp
 
 # --- 3.5 Group Interpolated Points into H3 Hexagons ---
@@ -260,7 +260,8 @@ for label in HM_COLS.keys():
             colorbar=dict(
                 title=dict(text=label, font=dict(color="white")),
                 thickness=14,
-                x=0.02,
+                x=0.98,  # Moves the scale to the far right of the screen
+                xanchor="right",  # Locks it so it never overflows off the edge
                 y=0.5,
                 len=0.6,
                 tickfont=dict(color="white"),

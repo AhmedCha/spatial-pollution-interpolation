@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         buttons.forEach(btn => {
             btn.addEventListener('click', () => {
                 const layerType = btn.getAttribute('data-layer');
-                
+
                 // Update button UI
                 buttons.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
@@ -75,7 +75,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 Plotly.restyle(mapElement, { 'visible': visibility });
             });
         });
+        // 4. Sidebar Toggle Logic
+        const sidebarToggleBtn = document.getElementById('sidebar-toggle');
+        const appContainer = document.querySelector('.app-container');
 
+        sidebarToggleBtn.addEventListener('click', () => {
+            appContainer.classList.toggle('sidebar-hidden');
+        });
     } catch (err) {
         console.error(err);
         loadingOverlay.innerHTML = `<p style="color: #ff3300">Error: ${err.message}</p>`;

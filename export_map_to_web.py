@@ -9,7 +9,6 @@ try:
     import h3
 except ImportError:
     print("CRITICAL: You must install the 'h3' library to generate hexagons.")
-    print("Run this in your terminal: pip install h3")
     exit(1)
 
 # --- 1. Load data ---
@@ -52,9 +51,12 @@ def zone_color(zone):
     }.get(zone, "#888888")
 
 
-zones = []
-hover_texts = []
-dot_colors = []
+# --- Generate Station Hover Texts and Colors ---
+station_hovers_pb = []
+station_hovers_cd = []
+station_hovers_hg = []
+station_hovers_overall = []
+overall_station_colors = []
 zone_priority = {"Safe Zone": 0, "Medium Zone": 1, "Danger Zone": 2}
 
 for _, row in df.iterrows():
@@ -70,12 +72,30 @@ for _, row in df.iterrows():
     )
 
     overall_zone = max([pb_z, cd_z, hg_z], key=lambda z: zone_priority[z])
-    zones.append(overall_zone)
-    dot_colors.append(zone_color(overall_zone))
+    overall_station_colors.append(zone_color(overall_zone))
 
     city, station = row.get("City", "Unknown"), row.get("Monitoring_Station", "Unknown")
-    text = (
-        f"<b>{city} - {station}</b> (Station)<br>"
+
+    station_hovers_pb.append(
+        f"<b>{city} - {station} (Point)</b><br>"
+        f"Lat: {row['Latitude']:.3f} deg  Lon: {row['Longitude']:.3f} deg<br>"
+        f"-----------------------------<br>"
+        f"<b>Lead (Pb):</b> {pb:.3f} ug/L  <- {pb_z}"
+    )
+    station_hovers_cd.append(
+        f"<b>{city} - {station} (Point)</b><br>"
+        f"Lat: {row['Latitude']:.3f} deg  Lon: {row['Longitude']:.3f} deg<br>"
+        f"-----------------------------<br>"
+        f"<b>Cadmium (Cd):</b> {cd:.3f} ug/L  <- {cd_z}"
+    )
+    station_hovers_hg.append(
+        f"<b>{city} - {station} (Point)</b><br>"
+        f"Lat: {row['Latitude']:.3f} deg  Lon: {row['Longitude']:.3f} deg<br>"
+        f"-----------------------------<br>"
+        f"<b>Mercury (Hg):</b> {hg:.4f} ug/L  <- {hg_z}"
+    )
+    station_hovers_overall.append(
+        f"<b>{city} - {station} (Point)</b><br>"
         f"Lat: {row['Latitude']:.3f} deg  Lon: {row['Longitude']:.3f} deg<br>"
         f"-----------------------------<br>"
         f"<b>Lead (Pb):</b> {pb:.3f} ug/L  <- {pb_z}<br>"
@@ -84,11 +104,6 @@ for _, row in df.iterrows():
         f"-----------------------------<br>"
         f"<b>Overall: {overall_zone}</b>"
     )
-    hover_texts.append(text)
-
-df["Zone"] = zones
-df["DotColor"] = dot_colors
-df["HoverText"] = hover_texts
 
 # --- 3. Build the interpolated surface layers ---
 lon_min, lon_max = df["Longitude"].min(), df["Longitude"].max()
@@ -119,7 +134,7 @@ for label, col in HM_COLS.items():
 
 # --- 3.5 Group Interpolated Points into H3 Hexagons ---
 print("Generating H3 Hexagonal GeoJSON grid...")
-H3_RESOLUTION = 4  # Adjust 3 (larger) to 5 (smaller) depending on desired hex size
+H3_RESOLUTION = 4
 
 lats = LAT_G.flatten()
 lons = LON_G.flatten()
@@ -129,7 +144,6 @@ hgs = interp_grids["Hg (ug/L)"].flatten()
 
 hex_data = {}
 for lat, lon, pb, cd, hg in zip(lats, lons, pbs, cds, hgs):
-    # Cross-compatibility for H3 v3 and v4 APIs
     try:
         h = h3.latlng_to_cell(lat, lon, H3_RESOLUTION)
     except AttributeError:
@@ -147,8 +161,8 @@ for lat, lon, pb, cd, hg in zip(lats, lons, pbs, cds, hgs):
 hex_features = []
 hex_ids, hex_pbs, hex_cds, hex_hgs = [], [], [], []
 hex_overall_z = []
-hex_overall_hover = []
 hex_hovers = {"Pb (ug/L)": [], "Cd (ug/L)": [], "Hg (ug/L)": []}
+hex_overall_hover = []
 
 for h, vals in hex_data.items():
     avg_pb, avg_cd, avg_hg = (
@@ -169,9 +183,9 @@ for h, vals in hex_data.items():
     hex_pbs.append(avg_pb)
     hex_cds.append(avg_cd)
     hex_hgs.append(avg_hg)
-    hex_overall_z.append(zone_priority[oz])  # 0, 1, or 2
+    hex_overall_z.append(zone_priority[oz])
 
-    # Individual Metal Hovers
+    # Hexagon hovers named "Interpolated Point"
     hex_hovers["Pb (ug/L)"].append(
         f"<b>Interpolated Point (Pb)</b><br>"
         f"Lat: {avg_lat:.3f} deg  Lon: {avg_lon:.3f} deg<br>"
@@ -190,8 +204,6 @@ for h, vals in hex_data.items():
         f"-----------------------------<br>"
         f"<b>Mercury (Hg):</b> {avg_hg:.4f} ug/L  <- {hz}"
     )
-
-    # Overall Hover
     hex_overall_hover.append(
         f"<b>Interpolated Point</b><br>"
         f"Lat: {avg_lat:.3f} deg  Lon: {avg_lon:.3f} deg<br>"
@@ -203,14 +215,13 @@ for h, vals in hex_data.items():
         f"<b>Overall: {oz}</b>"
     )
 
-    # Generate Polygon Boundary
     try:
         boundary = h3.cell_to_boundary(h)
     except AttributeError:
         boundary = h3.h3_to_geo_boundary(h)
 
     coords = [[[lon, lat] for lat, lon in boundary]]
-    coords[0].append(coords[0][0])  # Close the polygon
+    coords[0].append(coords[0][0])
 
     hex_features.append(
         {
@@ -229,7 +240,7 @@ colormaps = {"Pb (ug/L)": "Blues", "Cd (ug/L)": "Oranges", "Hg (ug/L)": "Purples
 layer_maxes = {"Pb (ug/L)": 50, "Cd (ug/L)": 5, "Hg (ug/L)": 0.1}
 z_arrays = {"Pb (ug/L)": hex_pbs, "Cd (ug/L)": hex_cds, "Hg (ug/L)": hex_hgs}
 
-# Add Choropleth Hexagon Layers for Individual Metals
+# Trace 0, 1, 2: Add Hexagon Mesh Layers for Individual Metals
 for label in HM_COLS.keys():
     fig.add_trace(
         go.Choroplethmapbox(
@@ -240,14 +251,12 @@ for label in HM_COLS.keys():
             zmin=0,
             zmax=layer_maxes[label],
             marker_opacity=0.6,
-            marker_line_width=0,  # Removes borders for a seamless mesh look
+            marker_line_width=0,
             showscale=True,
             colorbar=dict(
                 title=dict(text=label, font=dict(color="white")),
                 thickness=14,
-                x=0.01
-                if label == "Pb (ug/L)"
-                else (0.08 if label == "Cd (ug/L)" else 0.15),
+                x=0.02,
                 y=0.5,
                 len=0.6,
                 tickfont=dict(color="white"),
@@ -259,19 +268,19 @@ for label in HM_COLS.keys():
         )
     )
 
-# Add Categorical Choropleth Hexagon Layer for Overall Mesh
+# Trace 3: Add Hexagon Mesh Layer for Overall Mesh
 fig.add_trace(
     go.Choroplethmapbox(
         geojson=geojson_data,
         locations=hex_ids,
-        z=hex_overall_z,  # Contains 0, 1, or 2
+        z=hex_overall_z,
         colorscale=[
             [0.0, "#00cc66"],
-            [0.33, "#00cc66"],  # Safe
+            [0.33, "#00cc66"],
             [0.33, "#ffcc00"],
-            [0.66, "#ffcc00"],  # Medium
+            [0.66, "#ffcc00"],
             [0.66, "#ff3300"],
-            [1.0, "#ff3300"],  # Danger
+            [1.0, "#ff3300"],
         ],
         zmin=0,
         zmax=2,
@@ -285,25 +294,93 @@ fig.add_trace(
     )
 )
 
-# Add Scatter Points for Actual Stations (Always floats on top)
-for zone_label, zone_col in [
-    ("Safe Zone", "#00cc66"),
-    ("Medium Zone", "#ffcc00"),
-    ("Danger Zone", "#ff3300"),
-]:
-    sub = df[df["Zone"] == zone_label]
-    if not sub.empty:
-        fig.add_trace(
-            go.Scattermapbox(
-                lat=sub["Latitude"].tolist(),
-                lon=sub["Longitude"].tolist(),
-                mode="markers",
-                marker=dict(size=12, color=zone_col, opacity=1.0, symbol="circle"),
-                text=sub["HoverText"],
-                hoverinfo="text",
-                name=f"Current Station: {zone_label}",
-            )
-        )
+# Trace 4: Station Points for Pb
+fig.add_trace(
+    go.Scattermapbox(
+        lat=df["Latitude"].tolist(),
+        lon=df["Longitude"].tolist(),
+        mode="markers",
+        marker=dict(
+            size=12,
+            color=df["Heavy_Metals_Pb_ug_L"].tolist(),
+            colorscale="Blues",
+            cmin=0,
+            cmax=layer_maxes["Pb (ug/L)"],
+            showscale=False,
+            opacity=1.0,
+            symbol="circle",
+        ),
+        text=station_hovers_pb,
+        hoverinfo="text",
+        name="Stations - Pb",
+        visible=False,
+    )
+)
+
+# Trace 5: Station Points for Cd
+fig.add_trace(
+    go.Scattermapbox(
+        lat=df["Latitude"].tolist(),
+        lon=df["Longitude"].tolist(),
+        mode="markers",
+        marker=dict(
+            size=12,
+            color=df["Heavy_Metals_Cd_ug_L"].tolist(),
+            colorscale="Oranges",
+            cmin=0,
+            cmax=layer_maxes["Cd (ug/L)"],
+            showscale=False,
+            opacity=1.0,
+            symbol="circle",
+        ),
+        text=station_hovers_cd,
+        hoverinfo="text",
+        name="Stations - Cd",
+        visible=False,
+    )
+)
+
+# Trace 6: Station Points for Hg
+fig.add_trace(
+    go.Scattermapbox(
+        lat=df["Latitude"].tolist(),
+        lon=df["Longitude"].tolist(),
+        mode="markers",
+        marker=dict(
+            size=12,
+            color=df["Heavy_Metals_Hg_ug_L"].tolist(),
+            colorscale="Purples",
+            cmin=0,
+            cmax=layer_maxes["Hg (ug/L)"],
+            showscale=False,
+            opacity=1.0,
+            symbol="circle",
+        ),
+        text=station_hovers_hg,
+        hoverinfo="text",
+        name="Stations - Hg",
+        visible=False,
+    )
+)
+
+# Trace 7: Station Points for Overall
+fig.add_trace(
+    go.Scattermapbox(
+        lat=df["Latitude"].tolist(),
+        lon=df["Longitude"].tolist(),
+        mode="markers",
+        marker=dict(
+            size=12,
+            color=overall_station_colors,
+            opacity=1.0,
+            symbol="circle",
+        ),
+        text=station_hovers_overall,
+        hoverinfo="text",
+        name="Stations - Overall",
+        visible=True,
+    )
+)
 
 # --- 5. Layout ---
 fig.update_layout(
@@ -322,21 +399,11 @@ fig.update_layout(
     paper_bgcolor="#111111",
     plot_bgcolor="#111111",
     font=dict(color="white"),
-    legend=dict(
-        title="<b>Map Setup</b>",
-        bgcolor="rgba(30,30,30,0.85)",
-        bordercolor="#555",
-        borderwidth=1,
-        x=1.0,
-        y=1.0,
-        xanchor="right",
-        font=dict(size=12),
-    ),
+    showlegend=False,
     margin=dict(l=0, r=0, t=0, b=0),
-    height=750,
+    autosize=True,
 )
 
 # Export to JSON
-os.makedirs("webapp", exist_ok=True)
-fig.write_json("webapp/map_data.json")
-print("Map data successfully exported to webapp/map_data.json")
+fig.write_json("docs/map_data.json")
+print("Map data successfully exported to docs/map_data.json")

@@ -130,6 +130,10 @@ for label, col in HM_COLS.items():
     if np.any(nan_mask2):
         z_near = griddata(pts, z_vals, (LON_G, LAT_G), method="nearest")
         z_interp[nan_mask2] = z_near[nan_mask2]
+    # --- Constraint Logic ---
+    # Prevent overshoot into negative values (common with cubic splines)
+    z_interp = np.clip(z_interp, a_min=0.0, a_max=None)
+    
     interp_grids[label] = z_interp
 
 # --- 3.5 Group Interpolated Points into H3 Hexagons ---

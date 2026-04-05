@@ -26,71 +26,48 @@ body {
     overflow: hidden;
 }
 
+/* =========================================
+   1. MAIN LAYOUT
+========================================= */
 .app-container {
-    display: grid;
-    grid-template-columns: 320px 1fr;
+    position: relative; /* Changed to relative for absolute children */
     height: 100vh;
     width: 100%;
+    overflow: hidden;
 }
 
-/* Sidebar Styling */
+/* =========================================
+   2. SIDEBAR
+========================================= */
 .sidebar {
     background-color: var(--bg-sidebar);
     border-right: 1px solid #e2e8f0;
     display: flex;
     flex-direction: column;
     padding: 32px;
-    z-index: 10;
-    box-shadow: 4px 0 20px rgba(0,0,0,0.05);
-    color: var(--text-sidebar);
+    
+    /* NEW: Float over the map */
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 320px;
+    z-index: 20; 
+    box-shadow: 4px 0 20px rgba(0,0,0,0.15); /* Adds a drop shadow over the map */
+    
+    /* NEW: Use transform instead of margin for 60fps smooth animation */
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateX(0); 
 }
 
-header {
-    margin-bottom: 48px;
+/* Hides the sidebar by sliding it 100% to the left */
+.app-container.sidebar-hidden .sidebar {
+    transform: translateX(-100%);
 }
 
-.logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 8px;
-}
-
-.logo-icon {
-    font-size: 24px;
-}
-
-h1 {
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    background: linear-gradient(135deg, #1a1a1b 0%, #4a5568 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.tagline {
-    font-size: 14px;
-    color: var(--text-muted);
-    font-weight: 300;
-}
-
-h2 {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    color: var(--text-muted);
-    margin-bottom: 16px;
-}
-
-.instruction {
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-bottom: 12px;
-}
-
-/* Controls */
+/* =========================================
+   3. SIDEBAR CONTROLS & BUTTONS
+========================================= */
 .control-group {
     margin-bottom: 40px;
 }
@@ -140,14 +117,18 @@ h2 {
 .blue { background: #3a86ff; }
 .orange { background: #ff9f1c; }
 .purple { background: #9d4edd; }
+.none { background: transparent; border: 1px solid var(--text-muted); }
 
-/* Legend */
+/* =========================================
+   4. SIDEBAR LEGEND
+========================================= */
 .legend-item {
     display: flex;
     align-items: center;
     gap: 10px;
     margin-bottom: 8px;
     font-size: 14px;
+    color: var(--text-sidebar);
 }
 
 .dot {
@@ -160,30 +141,70 @@ h2 {
 .medium { background: var(--medium); box-shadow: 0 0 10px var(--medium); }
 .safe { background: var(--safe); box-shadow: 0 0 10px var(--safe); }
 
-footer {
-    margin-top: auto;
-    font-size: 12px;
-    color: var(--text-muted);
-}
-
-.version {
-    margin-top: 4px;
-    opacity: 0.5;
-}
-
-/* Map Section */
+/* =========================================
+   5. MAP VIEWPORT & CANVAS
+========================================= */
 .map-viewport {
-    position: relative;
-    width: 100%;
-    height: 100%;
+    /* NEW: Map is always 100% of the screen */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
 }
 
 #plotly-map {
     width: 100%;
     height: 100%;
-    background-color: #000;
+    background-color: var(--bg-deep);
 }
 
+/* Toggle Arrow Button */
+.sidebar-toggle {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    z-index: 15; /* Just below the sidebar */
+    width: 44px;
+    height: 44px;
+    background-color: var(--bg-sidebar);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-sidebar);
+    
+    /* NEW: Animate the button moving alongside the sidebar */
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s, color 0.2s;
+}
+
+/* Push the button to the right when the sidebar is OPEN */
+.app-container:not(.sidebar-hidden) .sidebar-toggle {
+    transform: translateX(320px); 
+}
+
+.sidebar-toggle:hover {
+    background-color: var(--accent);
+    color: white;
+}
+
+.sidebar-toggle svg {
+    width: 22px;
+    height: 22px;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: rotate(0deg); 
+}
+
+.app-container:not(.sidebar-hidden) .sidebar-toggle svg {
+    transform: rotate(180deg);
+}
+
+/* =========================================
+   6. LOADING OVERLAY
+========================================= */
 .loading-overlay {
     position: absolute;
     top: 0; left: 0;
@@ -210,41 +231,4 @@ footer {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
-}
-
-/* Floating Panel */
-.floating-panel {
-    position: absolute;
-    bottom: 24px;
-    right: 24px;
-    background: rgba(18, 18, 22, 0.8);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--glass-border);
-    padding: 16px 24px;
-    border-radius: 12px;
-    display: flex;
-    gap: 24px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-}
-
-.stat-card {
-    display: flex;
-    flex-direction: column;
-}
-
-.stat-label {
-    font-size: 10px;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    letter-spacing: 1px;
-}
-
-.stat-value {
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.stat-divider {
-    width: 1px;
-    background: var(--glass-border);
 }

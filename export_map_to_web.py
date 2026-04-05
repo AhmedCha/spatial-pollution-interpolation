@@ -173,21 +173,34 @@ for h, vals in hex_data.items():
 
     # Individual Metal Hovers
     hex_hovers["Pb (ug/L)"].append(
-        f"<b>Hexagon Pb</b><br>Lat: {avg_lat:.3f}  Lon: {avg_lon:.3f}<br>Value: {avg_pb:.4f} ug/L"
+        f"<b>Interpolated Point (Pb)</b><br>"
+        f"Lat: {avg_lat:.3f} deg  Lon: {avg_lon:.3f} deg<br>"
+        f"-----------------------------<br>"
+        f"<b>Lead (Pb):</b> {avg_pb:.3f} ug/L  <- {pz}"
     )
     hex_hovers["Cd (ug/L)"].append(
-        f"<b>Hexagon Cd</b><br>Lat: {avg_lat:.3f}  Lon: {avg_lon:.3f}<br>Value: {avg_cd:.4f} ug/L"
+        f"<b>Interpolated Point (Cd)</b><br>"
+        f"Lat: {avg_lat:.3f} deg  Lon: {avg_lon:.3f} deg<br>"
+        f"-----------------------------<br>"
+        f"<b>Cadmium (Cd):</b> {avg_cd:.3f} ug/L  <- {cz}"
     )
     hex_hovers["Hg (ug/L)"].append(
-        f"<b>Hexagon Hg</b><br>Lat: {avg_lat:.3f}  Lon: {avg_lon:.3f}<br>Value: {avg_hg:.4f} ug/L"
+        f"<b>Interpolated Point (Hg)</b><br>"
+        f"Lat: {avg_lat:.3f} deg  Lon: {avg_lon:.3f} deg<br>"
+        f"-----------------------------<br>"
+        f"<b>Mercury (Hg):</b> {avg_hg:.4f} ug/L  <- {hz}"
     )
 
     # Overall Hover
     hex_overall_hover.append(
-        f"<b>Interpolated Hexagon</b><br>"
-        f"Center Lat: {avg_lat:.3f} deg  Lon: {avg_lon:.3f} deg<br>"
-        f"Pb: {avg_pb:.3f} | Cd: {avg_cd:.3f} | Hg: {avg_hg:.4f}<br>"
-        f"<b>Status: {oz}</b>"
+        f"<b>Interpolated Point</b><br>"
+        f"Lat: {avg_lat:.3f} deg  Lon: {avg_lon:.3f} deg<br>"
+        f"-----------------------------<br>"
+        f"<b>Lead (Pb):</b> {avg_pb:.3f} ug/L  <- {pz}<br>"
+        f"<b>Cadmium (Cd):</b> {avg_cd:.3f} ug/L  <- {cz}<br>"
+        f"<b>Mercury (Hg):</b> {avg_hg:.4f} ug/L  <- {hz}<br>"
+        f"-----------------------------<br>"
+        f"<b>Overall: {oz}</b>"
     )
 
     # Generate Polygon Boundary
